@@ -1,0 +1,12 @@
+{
+  "intents": [
+    {"tag": "greeting",
+      "patterns": ["hey", "hi", "hello", "greetings", "what's up", "good day", "good afternoon", "good morning", "good evening"],
+      "responses": ["Hello, what can I do for you?", "Hi, what can I help you with?"]
+    },
+    {"tag": "goodbye",
+      "patterns": ["bye", "see you later", "goodbye"],
+      "responses": ["Have a nice day :)", "Hope to see you again soon!"]
+    }
+  ]
+}
