@@ -2,35 +2,37 @@ import random
 import json
 import numpy as np
 import nltk
-from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
 import re
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
-from utils import tokenize, stem, bag_of_words
+from utils import tokenize, stem, lemmatize, bag_of_words
 from model import NeuralNet
+
+# model output
+FILE = "model_data.pth"
 
 # hyperparams
 BATCH_SIZE = 8
 HIDDEN_SIZE = 8
-LEARNING_RATE = 0.001
+LEARNING_RATE = 0.0001
 NUM_EPOCHS = 1000
 
-intents = json.loads(open("intents.json").read())
+contexts = json.loads(open("contexts.json").read())
 words = []
 classes = []
 xy = []
 
-for intent in intents['intents']:
-    for pattern in intent['patterns']:
+for context in contexts['contexts']:
+    for pattern in context['patterns']:
         word_list = word_tokenize(pattern)
         words.extend(word_list)
-        xy.append((word_list, intent['tag']))
-        if intent['tag'] not in classes:
-            classes.append(intent['tag'])
+        xy.append((word_list, context['tag']))
+        classes.append(context['tag'])
 
-words = [stem(w) for w in words if not re.match(r'[^\w\s]', w)]
+words = [lemmatize(w) for w in words if not re.match(r'[^\w\s]', w) and w not in stopwords.words('english')]
 all_words = sorted(set(words))
 classes = sorted(set(classes))
 
@@ -40,7 +42,7 @@ print(all_words)
 X_train = []
 y_train = []
 
-for (pattern_sentence, tag) in xy:
+for pattern_sentence, tag in xy:
     bow = bag_of_words(pattern_sentence, all_words)
     X_train.append(bow)
 
@@ -63,8 +65,7 @@ class ChatDataset(Dataset):
         return self.n_samples
 
 
-dataset = ChatDataset()
-train_loader = DataLoader(dataset=dataset, batch_size=BATCH_SIZE, shuffle=True)
+train_loader = DataLoader(dataset=ChatDataset(), batch_size=BATCH_SIZE, shuffle=True)
 input_size = len(X_train[0])
 output_size = len(classes)
 
@@ -79,7 +80,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 for epoch in range(NUM_EPOCHS):
     for (words, labels) in train_loader:
         words = words.to(device)
-        labels = labels.to(device)
+        labels = labels.to(device).type(torch.LongTensor)
 
         # forward
         outputs = model(words)
@@ -103,7 +104,6 @@ data = {
 }
 print(data['all_words'], len(data["all_words"]))
 
-FILE = "data.pth"
 torch.save(data, FILE)
 
 print(f'Training complete. File saved to {FILE}')

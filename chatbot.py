@@ -2,13 +2,13 @@ import random
 import json
 import torch
 from model import NeuralNet
-from utils import tokenize, bag_of_words
+from utils import tokenize, lemmatize, bag_of_words
 
 THRESHOLD = 0.75
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-intents = json.loads(open("intents.json").read())
-FILE = "data.pth"
+contexts = json.loads(open("contexts.json").read())
+FILE = "model_data.pth"
 data = torch.load(FILE)
 
 input_size = data["input_size"]
@@ -42,8 +42,8 @@ while True:
     prob = probs[0][predicted.item()]
 
     if prob.item() > THRESHOLD:
-        for intent in intents["intents"]:
-            if tag == intent["tag"]:
-                print(f"ChatBot: {random.choice(intent['responses'])}")
+        for context in contexts["contexts"]:
+            if tag == context["tag"]:
+                print(f"ChatBot: {random.choice(context['responses'])}")
     else:
         print("Sorry, I don't understand.")
