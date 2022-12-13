@@ -12,8 +12,10 @@ from utils import tokenize, stem, lemmatize, bag_of_words
 from model import NeuralNet
 from sklearn.feature_extraction.text import TfidfVectorizer
 
+tfidf = TfidfVectorizer(max_features=3000, max_df=0.80, ngram_range=(1, 2), stop_words=stopwords.words('english'))
+
 # model output
-FILE = "model_data.pth"
+FILE = "data.pth"
 
 # hyperparams
 BATCH_SIZE = 8
@@ -22,39 +24,31 @@ LEARNING_RATE = 0.0001
 NUM_EPOCHS = 1000
 
 contexts = json.loads(open("contexts.json").read())
-words = []
+X = []
+y = []
 classes = []
 xy = []
 
 for context in contexts['contexts']:
     for pattern in context['patterns']:
-        word_list = word_tokenize(pattern)
-        words.extend(word_list)
-        xy.append((word_list, context['tag']))
-        classes.append(context['tag'])
+        pattern = " ".join([lemmatize(w) for w in tokenize(pattern) if not re.match(r'[^\w\s]', w) 
+            and w not in stopwords.words('english') and w != '' and not any(char.isdigit() for char in w)])
+        if len(pattern) > 1:
+            X.append(pattern)
+            y.append(context['tag'])
 
-words = [lemmatize(w) for w in words if not re.match(r'[^\w\s]', w) and w not in stopwords.words('english')]
-all_words = sorted(set(words))
-classes = sorted(set(classes))
-
+classes = sorted(set(y))
+print(X[:5])
+X = tfidf.fit_transform(X).toarray()
 
 print(classes)
-print(all_words)
-print(len(all_words))
 
-X_train = []
-y_train = []
-
-for pattern_sentence, tag in xy:
-    bow = bag_of_words(pattern_sentence, all_words)
-    X_train.append(bow)
-
+for idx, tag in enumerate(y):
     label = classes.index(tag)
-    y_train.append(label)
+    y[idx] = label
 
-X_train = np.array(X_train)
-y_train = np.array(y_train)
-
+X_train = np.array(X)
+y_train = np.array(y)
 
 class ChatDataset(Dataset):
     def __init__(self):
@@ -83,7 +77,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
 for epoch in range(NUM_EPOCHS):
     for (words, labels) in train_loader:
-        words = words.to(device)
+        words = words.to(device).to(torch.float32)
         labels = labels.to(device).type(torch.LongTensor)
 
         # forward
@@ -103,11 +97,9 @@ data = {
     "input_size": input_size,
     "output_size": output_size,
     "hidden_size": HIDDEN_SIZE,
-    "all_words": all_words,
     "classes": classes,
+    "tfidf": tfidf
 }
-
-print(data['all_words'], len(data["all_words"]))
 
 torch.save(data, FILE)
 

@@ -27,3 +27,7 @@ def bag_of_words(tokenized_sentence, all_words):
             bag[idx] = 1.0
 
     return bag
+
+def tfidf_convert(tfidf, text):
+    text = ""
+    return tfidf.transform(text)
